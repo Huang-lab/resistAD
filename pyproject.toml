@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resistad"
+version = "0.2.0"
+description = "Multi-omic AD resilience pipeline — UK Biobank / DNAnexus"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # DNAnexus platform (dxpy works locally; dxdata is RAP-only, installed there)
+    "dxpy>=0.376",
+    # Core data
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scipy>=1.11",
+    "anndata>=0.10",
+    "muon>=0.1.5",
+    # Statistics / ML
+    "statsmodels>=0.14",
+    "scikit-learn>=1.3",
+    # Networks
+    "networkx>=3.1",
+    # Genomics
+    "pyranges>=0.1",
+    "bgen-reader>=4.0",       # BGEN format for imputed/WES genotypes
+    # Visualisation
+    "matplotlib>=3.7",
+    "seaborn>=0.13",
+    # Utilities
+    "pyyaml>=6.0",
+    "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+# Proteomics enrichment
+ppi = ["requests>=2.28"]
+# Epigenomics (EPIC methylation subset)
+methylation = ["pyranges>=0.1"]
+# MOFA+ integration
+mofa = ["muon>=0.1.5"]
+# DNAnexus RAP (dxdata is pre-installed on RAP JupyterLab; not on PyPI)
+rap = ["dxdata>=0.0.1"]
+# Snakemake workflow
+snakemake = ["snakemake>=8.0"]
+# Development
+dev = ["pytest", "ruff", "ipykernel", "jupyter"]
+full = ["requests>=2.28", "snakemake>=8.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]

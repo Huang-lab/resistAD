@@ -1,0 +1,187 @@
+project:
+  name: resistAD
+  version: "0.2.0"
+  output_dir: analysis/out
+  data_dir: data
+  raw_dir: data/raw
+
+# ── DNAnexus / UK Biobank ────────────────────────────────────────────────────
+dnanexus:
+  project_id: "project-GzgP2K8J36636XYX12fyBjKB"   # Precision Omics project
+  # Record ID of the most recent dispensed dataset
+  # Found via: dx find data --class record --name "*app151418*"
+  phenotype_dataset_id: "record-J5ZVkjjJkVVZjf199fF3q1ZY"
+  token_path: "data/dnanexus_token.txt"   # optional: dx login writes ~/.dnanexus_config
+
+  # Bulk data paths within the project (relative to project root)
+  bulk:
+    olink:          "Bulk/Protein biomarkers/Olink"
+    brain_mri:      "Bulk/Brain MRI"
+    exome:          "Bulk/Exome sequences/Population level exome OQFE variants, PLINK format - final release"
+    imputation:     "Bulk/Imputation/UKB imputation from genotype"
+    genotype_calls: "Bulk/Genotype Results/Genotype calls"
+
+# ── UK Biobank field IDs ─────────────────────────────────────────────────────
+# Field format in dx extract_dataset:
+#   Non-instanced : participant.p{field}          (e.g. p31 = Sex)
+#   Instanced     : participant.p{field}_i{inst}  (e.g. p21003_i0 = Age, instance 0)
+#   Array-only    : participant.p{field}_a{idx}   (e.g. p22009_a1 = PC1; arrays start at 1)
+#   Both          : participant.p{field}_i{inst}_a{idx}
+fields:
+  # Core identifiers & demographics
+  eid: "eid"
+  sex: 31                              # non-instanced
+  age_at_assessment: 21003             # instanced (0–3)
+  assessment_centre: 54                # instanced (0–3)
+  education: 6138                      # instanced (0–3)
+  ethnicity: 21000                     # instanced (0–3)
+
+  # Genetics (phenotype-level fields)
+  genotype_batch: 22000                # non-instanced
+  genetic_ethnic_grouping: 22006       # non-instanced
+  genetic_pcs: 22009                   # array-only: p22009_a1 .. p22009_a10
+
+  # NOTE: APOE genotype is NOT available as a phenotype field.
+  # It must be extracted from imputed genotype data (rs429358/rs7412 on chr19).
+  # The genetics step (03_genetics.py) handles this via plink2.
+
+  # Non-instanced fields (no _i0 suffix)
+  non_instanced:
+    - 31       # Sex
+    - 22000    # Genotype batch
+    - 22006    # Genetic ethnic grouping
+    - 22009    # Genetic PCs (array-only)
+
+  # Cognition (instanced 0–3)
+  fluid_intelligence: 20016
+  reaction_time: 20023                 # Mean time to correctly identify matches
+  numeric_memory: 4282
+  pairs_matching: 399                  # instanced + array (p399_i{N}_a{M})
+  trail_making_b: 20157                # Trail making test completion time
+  symbol_digit: 23324
+
+  # Brain imaging IDPs (instanced; instance 2 = imaging visit)
+  hippocampus_L:  26562
+  hippocampus_R:  26563
+  total_brain_vol: 25010
+  wmh_volume: 25781
+  fa_corticospinal_L: 25056
+  fa_corticospinal_R: 25057
+  md_corticospinal_L: 25452
+  md_corticospinal_R: 25453
+  cortical_thickness_mean: 26755
+
+  # Health records (HES ICD-10 codes)
+  # Diagnoses are in the 'hesin_diag' entity (hesin_diag.diag_icd10),
+  # NOT as participant-level array fields.
+  dementia_codes: ["F00", "F01", "F03", "G30", "G31"]
+  mci_codes: ["F06.7", "R41.3"]
+
+  # Olink proteomics
+  # Data is in the 'olink_instance_0' entity with protein gene symbols as fields.
+  # NOT participant.p30900_i0_a{N}.
+
+# ── Cohort definition ────────────────────────────────────────────────────────
+cohort:
+  # Genetic risk thresholds
+  apoe_e4_as_risk: true
+  prs_risk_percentile: 0.90        # top 10% AD-PRS = high genetic risk
+  prs_control_max_percentile: 0.30 # bottom 30% AD-PRS = low risk controls
+
+  # Cognitive thresholds (age-adjusted)
+  min_age: 60
+  cognition_field: 20016
+  cognition_resilient_percentile: 0.75   # top 25% age-adjusted cognition = intact
+
+  # Continuous resilience index
+  compute_resilience_index: true
+
+  # Confounders for all models
+  confounders:
+    - age_at_assessment
+    - sex
+    - education
+    - assessment_centre
+    - genotype_batch
+    - pc1
+    - pc2
+    - pc3
+    - pc4
+    - pc5
+    - pc6
+    - pc7
+    - pc8
+    - pc9
+    - pc10
+
+# ── AD-PRS ───────────────────────────────────────────────────────────────────
+prs:
+  gwas_weights_url: "https://ftp.ebi.ac.uk/pub/databases/gwas/summary_statistics/GCST90027158"
+  gwas_weights_file: "data/raw/bellenguez2022_ad_gwas.tsv.gz"
+  clump_r2: 0.1
+  clump_kb: 250
+  p_threshold: 5.0e-8
+  exclude_apoe_region: true
+  apoe_chr: 19
+  apoe_start_mb: 44.4
+  apoe_end_mb: 46.5
+
+# ── Analysis thresholds ──────────────────────────────────────────────────────
+thresholds:
+  padj: 0.05
+  effect_size_min: 0.2
+  ppi_score_threshold: 700
+  mofa_n_factors: 15
+  mofa_min_r2: 0.01
+  methylation_delta_beta: 0.05
+  methylation_padj: 0.05
+  meta_padj: 0.05
+  convergence_n_layers: 2
+
+# ── Olink proteomics ─────────────────────────────────────────────────────────
+olink:
+  lod_filter: true
+  bridge_normalise: false
+  panels:
+    - "Cardiometabolic"
+    - "Inflammation"
+    - "Neurology"
+    - "Oncology"
+  neurological_proteins:
+    - "GFAP"
+    - "NEFL"
+    - "NRGN"
+    - "BDNF"
+    - "CLU"
+    - "CR1"
+    - "BIN1"
+
+# ── Brain MRI IDPs ───────────────────────────────────────────────────────────
+imaging:
+  idp_covariates: [total_brain_vol, assessment_centre]
+  idp_groups:
+    subcortical_volumes: [hippocampus_L, hippocampus_R]
+    white_matter: [wmh_volume]
+    diffusion: [fa_corticospinal_L, fa_corticospinal_R,
+                md_corticospinal_L, md_corticospinal_R]
+    cortical: [cortical_thickness_mean]
+
+# ── Rare variant analysis (WES) ─────────────────────────────────────────────
+rare_variants:
+  gene_list:
+    - "TREM2"
+    - "PLCG2"
+    - "ABI3"
+    - "ABCA7"
+    - "SORL1"
+    - "APP"
+    - "PSEN1"
+    - "PSEN2"
+    - "APOE"
+  maf_threshold: 0.01
+  cadd_threshold: 20
+
+# ── MOFA+ integration ────────────────────────────────────────────────────────
+integration:
+  n_factors: 15
+  convergence_n_layers: 2

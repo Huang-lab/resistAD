@@ -1,0 +1,39 @@
+# Data — never commit participant-level data
+data/raw/
+data/dnanexus_token.txt
+data/mitoken.txt
+data/my_synapse_token.txt
+
+# Old ROSMAP data repos (not used in UKB pipeline)
+data/AD-Biomarkers-MultiOmics/
+data/AD_scRNAseq_companion/
+data/sn_networks_ROSMAP/
+
+# Claude settings (local)
+.claude/
+
+# Analysis outputs
+analysis/out/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# plink2 binary (downloaded at runtime)
+plink2
