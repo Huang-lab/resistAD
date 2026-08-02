@@ -37,3 +37,7 @@ Thumbs.db
 
 # plink2 binary (downloaded at runtime)
 plink2
+
+# --- Claude Code session histories (kept local only, never committed) --------
+SESSION_HISTORY*
+session_history*
